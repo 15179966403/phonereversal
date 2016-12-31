@@ -9,6 +9,8 @@ import android.hardware.SensorManager;
 import android.media.AudioManager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.telephony.PhoneStateListener;
+import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -22,6 +24,7 @@ public class MainActivity extends Activity{
     private static final float CRITICAL_DOWN_ANGLE=-5.0f;
     private static final float CRITICAL_UP_ANGLE=5.0f;
     private int mReverseDownFlg=0;  //0表示向上，1表示向下
+    private TelephonyManager telephonyManager;
     private AudioManager audioManager;
 
     @Override
@@ -29,9 +32,12 @@ public class MainActivity extends Activity{
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         sensorManager=(SensorManager)getSystemService(SENSOR_SERVICE);
+        telephonyManager=(TelephonyManager)getSystemService(TELEPHONY_SERVICE);
+        MyPhoneListener listener=new MyPhoneListener();
+        telephonyManager.listen(listener,PhoneStateListener.LISTEN_CALL_STATE);
+        audioManager=(AudioManager)getSystemService(AUDIO_SERVICE);
         sensor=sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         textView=(TextView)findViewById(R.id.textviews);
-        audioManager=(AudioManager)getSystemService(AUDIO_SERVICE);
         textView.setTextSize(24);
     }
 
@@ -52,6 +58,7 @@ public class MainActivity extends Activity{
     private SensorEventListener sensorEventListener=new SensorEventListener() {
         @Override
         public void onSensorChanged(SensorEvent event) {
+
             float x=event.values[SensorManager.DATA_X];
             float y=event.values[SensorManager.DATA_Y];
             float z=event.values[SensorManager.DATA_Z];
@@ -63,13 +70,13 @@ public class MainActivity extends Activity{
                 Log.d("listener","屏幕向下");
                 mReverseDownFlg=1;
             }
-            if(mReverseDownFlg==1){
+            /*if(mReverseDownFlg==1){
                 Log.d("ll","设置声音为静音");
                 audioManager.setRingerMode(AudioManager.RINGER_MODE_SILENT);
             }else{
                 Log.d("11","设置声音为正常");
                 audioManager.setRingerMode(AudioManager.RINGER_MODE_NORMAL);
-            }
+            }*/
         }
 
         @Override
@@ -77,4 +84,26 @@ public class MainActivity extends Activity{
 
         }
     };
+
+    private class MyPhoneListener extends PhoneStateListener{
+        @Override
+        public void onCallStateChanged(int state, String incomingNumber) {
+            switch (state){
+                //正常状态
+                case TelephonyManager.CALL_STATE_IDLE:
+                    break;
+                //响铃状态
+                case TelephonyManager.CALL_STATE_RINGING:
+                    if(mReverseDownFlg==1){
+                        audioManager.setRingerMode(AudioManager.RINGER_MODE_SILENT);
+                    }else{
+                        audioManager.setRingerMode(AudioManager.RINGER_MODE_NORMAL);
+                    }
+                    break;
+                //通话状态
+                case TelephonyManager.CALL_STATE_OFFHOOK:
+                    break;
+            }
+        }
+    }
 }
